@@ -1,0 +1,17 @@
+{
+  "uuid": "65eac49d-b926-47ba-b233-4a83fbd0b231",
+  "shortName": "analog-watchface",
+  "longName": "analog-watchface",
+  "companyName": "MakeAwesomeHappen",
+  "versionCode": 1,
+  "versionLabel": "1.0",
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+    "media": []
+  }
+}
