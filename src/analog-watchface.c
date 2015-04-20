@@ -10,12 +10,12 @@ static Window *s_main_window;
 static Layer *s_ticks_layer;
 static Layer *s_canvas_layer;
 
-#define TICK_RADIUS   68
-#define SECOND_RADIUS 64
-#define MINUTE_RADIUS 56
-#define HOUR_RADIUS   36
+#define TICK_RADIUS       68
+#define SECOND_RADIUS     64
+#define MINUTE_RADIUS     56
+#define HOUR_RADIUS       36
 #define MINUTE_HAND_WIDTH 2
-#define HOUR_HAND_WIDTH 2
+#define HOUR_HAND_WIDTH   2
 
 static const GPathInfo MINUTE_HAND_POINTS = {
   4,
