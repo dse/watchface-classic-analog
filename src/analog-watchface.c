@@ -8,7 +8,8 @@
 
 static Window *s_main_window;
 static Layer *s_ticks_layer;
-static Layer *s_canvas_layer;
+static Layer *s_wall_time_layer;
+static Layer *s_stopwatch_layer;
 
 #define TICK_RADIUS       68
 #define SECOND_RADIUS     64
@@ -20,9 +21,9 @@ static Layer *s_canvas_layer;
 static const GPathInfo MINUTE_HAND_POINTS = {
   4,
   (GPoint []) {
-    { MINUTE_HAND_WIDTH, MINUTE_HAND_WIDTH },
-    { -MINUTE_HAND_WIDTH, MINUTE_HAND_WIDTH },
     { -MINUTE_HAND_WIDTH, -MINUTE_RADIUS },
+    { -MINUTE_HAND_WIDTH, MINUTE_HAND_WIDTH },
+    { MINUTE_HAND_WIDTH, MINUTE_HAND_WIDTH },
     { MINUTE_HAND_WIDTH, -MINUTE_RADIUS }
   }
 };
@@ -30,9 +31,9 @@ static const GPathInfo MINUTE_HAND_POINTS = {
 static const GPathInfo HOUR_HAND_POINTS = {
   4,
   (GPoint []){
-    { HOUR_HAND_WIDTH, HOUR_HAND_WIDTH },
-    { -HOUR_HAND_WIDTH, HOUR_HAND_WIDTH },
     { -HOUR_HAND_WIDTH, -HOUR_RADIUS },
+    { -HOUR_HAND_WIDTH, HOUR_HAND_WIDTH },
+    { HOUR_HAND_WIDTH, HOUR_HAND_WIDTH },
     { HOUR_HAND_WIDTH, -HOUR_RADIUS }
   }
 };
@@ -84,7 +85,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_context_set_fill_color(ctx, GColorWhite);
   
-  int second_angle = (int)(TRIG_MAX_ANGLE * t->tm_sec / 60.0    + 0.5);
   GPoint second = tick_point(center, SECOND_RADIUS, t->tm_sec * 6);
   graphics_draw_line(ctx, center, second);
 
@@ -92,16 +92,51 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   int hour_angle   = (int)(TRIG_MAX_ANGLE * (t->tm_hour % 12 * 3600 + t->tm_min * 60 + t->tm_sec) / 43200.0 + 0.5);
 
   gpath_rotate_to(s_minute_arrow, minute_angle);
-  //  gpath_draw_filled(ctx, s_minute_arrow);
+  gpath_draw_filled(ctx, s_minute_arrow);
   gpath_draw_outline(ctx, s_minute_arrow);
 
   gpath_rotate_to(s_hour_arrow, hour_angle);
-  //  gpath_draw_filled(ctx, s_hour_arrow);
+  gpath_draw_filled(ctx, s_hour_arrow);
   gpath_draw_outline(ctx, s_hour_arrow);
 }
 
+static time_t stopwatch_sec = 0;
+static uint16_t stopwatch_msec = 0;
+
+static void stopwatch_update_proc(Layer *layer, GContext *ctx) {
+  time_t now_sec, sec;
+  uint16_t now_msec, msec;
+  
+  if (!stopwatch_sec && !stopwatch_msec) {
+    sec = 0;
+    msec = 0;
+  } else {
+    time_ms(&now_sec, &now_msec);
+    if (now_msec < stopwatch_msec) {
+      sec = now_sec - stopwatch_sec - 1;
+      msec = 1000 + now_msec - stopwatch_msec;
+    } else {
+      sec = now_sec - stopwatch_sec;
+      msec = now_msec - stopwatch_msec;
+    }
+  }
+
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_context_set_fill_color(ctx, GColorWhite);
+
+  GPoint pt_msec   = tick_point(center1, radius1 - 4, 360.0 * msec / 1000);
+  GPoint pt_second = tick_point(center2, radius1 - 4, sec % 60 * 6);
+  GPoint pt_minute = tick_point(center3, radius1 - 4, (int)(sec % 3600  / 10.0  + 0.5));
+  GPoint pt_hour   = tick_point(center3, (int)((radius1 - 4.0) * 2.0 / 3.0 + 0.5), (int)(sec % 43200 / 120.0 + 0.5));
+
+  graphics_draw_line(ctx, center1, pt_msec);
+  graphics_draw_line(ctx, center2, pt_second);
+  graphics_draw_line(ctx, center3, pt_minute);
+  graphics_draw_line(ctx, center3, pt_hour);
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  layer_mark_dirty(s_canvas_layer);
+  layer_mark_dirty(s_wall_time_layer);
 }
 
 static void main_window_load(Window *window) {
@@ -121,16 +156,24 @@ static void main_window_load(Window *window) {
   layer_set_update_proc(s_ticks_layer, ticks_update_proc);
   layer_add_child(window_layer, s_ticks_layer);
 
-  s_canvas_layer = layer_create(bounds);
-  layer_set_update_proc(s_canvas_layer, canvas_update_proc);
-  layer_add_child(window_layer, s_canvas_layer);
+  s_wall_time_layer = layer_create(bounds);
+  layer_set_update_proc(s_wall_time_layer, canvas_update_proc);
+  layer_add_child(window_layer, s_wall_time_layer);
+
+  s_stopwatch_layer = layer_create(bounds);
+  layer_set_update_proc(s_stopwatch_layer, stopwatch_update_proc);
+  layer_add_child(window_layer, s_stopwatch_layer);
+
+  layer_mark_dirty(s_wall_time_layer);
+  layer_mark_dirty(s_stopwatch_layer);
 
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 }
 
 static void main_window_unload(Window *window) {
   // Destroy Layer
-  layer_destroy(s_canvas_layer);
+  layer_destroy(s_wall_time_layer);
+  layer_destroy(s_stopwatch_layer);
 }
 
 static void init(void) {
@@ -144,8 +187,6 @@ static void init(void) {
   
   s_minute_arrow = gpath_create(&MINUTE_HAND_POINTS);
   s_hour_arrow = gpath_create(&HOUR_HAND_POINTS);
-  
-  Layer *window_layer = window_get_root_layer(s_main_window);
   
   gpath_move_to(s_minute_arrow, center);
   gpath_move_to(s_hour_arrow, center);
