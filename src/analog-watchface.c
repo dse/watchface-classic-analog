@@ -9,7 +9,6 @@
 static Window *s_main_window;
 static Layer *s_ticks_layer;
 static Layer *s_wall_time_layer;
-static Layer *s_stopwatch_layer;
 
 #define TICK_RADIUS       68
 #define SECOND_RADIUS     64
@@ -42,8 +41,6 @@ static GPath *s_minute_arrow, *s_hour_arrow;
 
 static GRect bounds;
 static GPoint center;
-static GPoint center1, center2, center3;
-static int radius1;
 
 GPoint tick_point (GPoint center, int radius, int degrees) {
   int angle = (int)(TRIG_MAX_ANGLE * degrees / 360.0 + 0.5);
@@ -73,9 +70,6 @@ void draw_ticks (GContext *ctx, GPoint center, int radius, int num_ticks, int ti
 
 static void ticks_update_proc(Layer *layer, GContext *ctx) {
   draw_ticks(ctx, center, TICK_RADIUS, 60, 5, 1);
-  draw_ticks(ctx, center1, radius1, 20, 4, 1);
-  draw_ticks(ctx, center2, radius1, 60, 5, 0);
-  draw_ticks(ctx, center3, radius1, 60, 5, 0);
 }
 
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
@@ -100,41 +94,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   gpath_draw_outline(ctx, s_hour_arrow);
 }
 
-static time_t stopwatch_sec = 0;
-static uint16_t stopwatch_msec = 0;
-
-static void stopwatch_update_proc(Layer *layer, GContext *ctx) {
-  time_t now_sec, sec;
-  uint16_t now_msec, msec;
-  
-  if (!stopwatch_sec && !stopwatch_msec) {
-    sec = 0;
-    msec = 0;
-  } else {
-    time_ms(&now_sec, &now_msec);
-    if (now_msec < stopwatch_msec) {
-      sec = now_sec - stopwatch_sec - 1;
-      msec = 1000 + now_msec - stopwatch_msec;
-    } else {
-      sec = now_sec - stopwatch_sec;
-      msec = now_msec - stopwatch_msec;
-    }
-  }
-
-  graphics_context_set_stroke_color(ctx, GColorWhite);
-  graphics_context_set_fill_color(ctx, GColorWhite);
-
-  GPoint pt_msec   = tick_point(center1, radius1 - 4, 360.0 * msec / 1000);
-  GPoint pt_second = tick_point(center2, radius1 - 4, sec % 60 * 6);
-  GPoint pt_minute = tick_point(center3, radius1 - 4, (int)(sec % 3600  / 10.0  + 0.5));
-  GPoint pt_hour   = tick_point(center3, (int)((radius1 - 4.0) * 2.0 / 3.0 + 0.5), (int)(sec % 43200 / 120.0 + 0.5));
-
-  graphics_draw_line(ctx, center1, pt_msec);
-  graphics_draw_line(ctx, center2, pt_second);
-  graphics_draw_line(ctx, center3, pt_minute);
-  graphics_draw_line(ctx, center3, pt_hour);
-}
-
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   layer_mark_dirty(s_wall_time_layer);
 }
@@ -144,11 +103,6 @@ static void main_window_load(Window *window) {
 
   bounds = layer_get_bounds(window_layer);
   center = grect_center_point(&bounds);
-
-  center1 = tick_point(center, TICK_RADIUS / 2,   0);
-  center2 = tick_point(center, TICK_RADIUS / 2, 120);
-  center3 = tick_point(center, TICK_RADIUS / 2, 240);
-  radius1 = (int)(TICK_RADIUS / 2.5 + 0.5);
 
   window_set_background_color(window, GColorBlack);
 
@@ -160,12 +114,7 @@ static void main_window_load(Window *window) {
   layer_set_update_proc(s_wall_time_layer, canvas_update_proc);
   layer_add_child(window_layer, s_wall_time_layer);
 
-  s_stopwatch_layer = layer_create(bounds);
-  layer_set_update_proc(s_stopwatch_layer, stopwatch_update_proc);
-  layer_add_child(window_layer, s_stopwatch_layer);
-
   layer_mark_dirty(s_wall_time_layer);
-  layer_mark_dirty(s_stopwatch_layer);
 
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 }
@@ -173,7 +122,6 @@ static void main_window_load(Window *window) {
 static void main_window_unload(Window *window) {
   // Destroy Layer
   layer_destroy(s_wall_time_layer);
-  layer_destroy(s_stopwatch_layer);
 }
 
 static void init(void) {
