@@ -1,17 +1,22 @@
 {
-  "uuid": "65eac49d-b926-47ba-b233-4a83fbd0b231",
-  "shortName": "analog-watchface",
-  "longName": "analog-watchface",
-  "companyName": "MakeAwesomeHappen",
+  "uuid": "938f4452-e7b4-11e4-9013-7cd1c3e52b3b",
+  "shortName": "Analog Simple",
+  "longName": "Analog Simple Watchface",
+  "companyName": "Darren Embry",
   "versionCode": 1,
   "versionLabel": "1.0",
   "watchapp": {
-    "watchface": false
+    "watchface": true
   },
   "appKeys": {
     "dummy": 0
   },
   "resources": {
     "media": []
-  }
+  },
+  "targetPlatforms": [
+    "aplite",
+    "basalt"
+  ],
+  "sdkVersion": "3"
 }
