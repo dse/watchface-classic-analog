@@ -82,8 +82,8 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   GPoint second = tick_point(center, SECOND_RADIUS, t->tm_sec * 6);
   graphics_draw_line(ctx, center, second);
 
-  int minute_angle = (int)(TRIG_MAX_ANGLE * (                         t->tm_min * 60 + t->tm_sec) / 3600.0  + 0.5);
-  int hour_angle   = (int)(TRIG_MAX_ANGLE * (t->tm_hour % 12 * 3600 + t->tm_min * 60 + t->tm_sec) / 43200.0 + 0.5);
+  int minute_angle = (int)(TRIG_MAX_ANGLE / 3600.0  * (                         t->tm_min * 60 + t->tm_sec) + 0.5);
+  int hour_angle   = (int)(TRIG_MAX_ANGLE / 43200.0 * (t->tm_hour % 12 * 3600 + t->tm_min * 60 + t->tm_sec) + 0.5);
 
   gpath_rotate_to(s_minute_arrow, minute_angle);
   gpath_draw_filled(ctx, s_minute_arrow);
