@@ -17,6 +17,9 @@ static Layer *s_wall_time_layer;
 #define MINUTE_HAND_WIDTH 2
 #define HOUR_HAND_WIDTH   2
 
+#define TOP_ROW_FONT_SIZE 14
+#define SHOW_TOP_ROW 0
+
 static const GPathInfo MINUTE_HAND_POINTS = {
   4,
   (GPoint []) {
@@ -102,6 +105,10 @@ static void main_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
 
   bounds = layer_get_bounds(window_layer);
+  if (SHOW_TOP_ROW) {
+    bounds.origin.y += TOP_ROW_FONT_SIZE;
+    bounds.size.h   -= TOP_ROW_FONT_SIZE;
+  }
   center = grect_center_point(&bounds);
 
   window_set_background_color(window, GColorBlack);
@@ -113,6 +120,9 @@ static void main_window_load(Window *window) {
   s_wall_time_layer = layer_create(bounds);
   layer_set_update_proc(s_wall_time_layer, canvas_update_proc);
   layer_add_child(window_layer, s_wall_time_layer);
+
+  bounds = layer_get_bounds(s_ticks_layer);
+  center = grect_center_point(&bounds);
 
   layer_mark_dirty(s_wall_time_layer);
 
