@@ -135,7 +135,7 @@ static void main_window_load(Window *window) {
   static BatteryChargeState battery_state;
 
   bounds = layer_get_bounds(window_layer);
-  bounds.origin.y += 14;
+  bounds.origin.y += 21;
   bounds.size.h   -= 28;
   center = grect_center_point(&bounds);
 
