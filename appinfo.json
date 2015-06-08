@@ -3,8 +3,8 @@
 	"shortName": "Dress Watch",
 	"longName": "Dress Watch",
 	"companyName": "Darren Embry",
-	"versionCode": 2,
-	"versionLabel": "1.1",
+	"versionCode": 3,
+	"versionLabel": "2.0",
 	"watchapp": {
 		"watchface": true
 	},
