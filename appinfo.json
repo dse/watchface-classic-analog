@@ -1,22 +1,25 @@
 {
-  "uuid": "d02327f6-d77b-461f-818a-91813da22a52",
-  "shortName": "Dress Watch",
-  "longName": "Dress Watch",
-  "companyName": "Darren Embry",
-  "versionCode": 2,
-  "versionLabel": "1.1",
-  "watchapp": {
-    "watchface": true
-  },
-  "appKeys": {
-    "dummy": 0
-  },
-  "resources": {
-    "media": []
-  },
-  "targetPlatforms": [
-    "aplite",
-    "basalt"
-  ],
-  "sdkVersion": "3"
+	"uuid": "d02327f6-d77b-461f-818a-91813da22a52",
+	"shortName": "Dress Watch",
+	"longName": "Dress Watch",
+	"companyName": "Darren Embry",
+	"versionCode": 2,
+	"versionLabel": "1.1",
+	"watchapp": {
+		"watchface": true
+	},
+	"appKeys": {
+		"dummy": 0
+	},
+	"resources": {
+		"media": []
+	},
+	"targetPlatforms": [
+		"aplite",
+		"basalt"
+	],
+	"capabilities": [
+		"configurable"
+	],
+	"sdkVersion": "3"
 }

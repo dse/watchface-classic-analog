@@ -1,10 +1,7 @@
-/*
- * main.c
- * Creates a Window, Layer and assigns an `update_proc` to draw 
- * the 'P' in the Pebble logo.
- */
-
 #include <pebble.h>
+#include "analog-watchface.h"
+
+#define app__log(a) app_log(APP_LOG_LEVEL_INFO, __FILE__, __LINE__, a);
 
 static Window *s_main_window;
 static Layer *s_ticks_layer;
@@ -26,6 +23,14 @@ static int minute_when_last_updated;
 
 #define TOP_ROW_FONT_SIZE 14
 #define SHOW_TOP_ROW 0
+
+#define OPTION_SHOW_DATE       0
+#define OPTION_SHOW_BATTERY    1
+#define OPTION_USE_BOLD_FONT   2
+
+static bool show_date;
+static bool show_battery;
+static bool use_bold_font;
 
 static const GPathInfo MINUTE_HAND_POINTS = {
   4,
@@ -52,14 +57,14 @@ static GPath *s_minute_arrow, *s_hour_arrow;
 static GRect bounds;
 static GPoint center;
 
-GPoint tick_point (GPoint center, int radius, int degrees) {
+GPoint tick_point(GPoint center, int radius, int degrees) {
   int angle = (int)(TRIG_MAX_ANGLE * degrees / 360.0 + 0.5);
   int x = center.x + (int)(radius * 1.0 * sin_lookup(angle) / TRIG_MAX_RATIO + 0.5);
   int y = center.y - (int)(radius * 1.0 * cos_lookup(angle) / TRIG_MAX_RATIO + 0.5);
   return GPoint(x, y);
 }
 
-void draw_ticks (GContext *ctx, GPoint center, int radius, int num_ticks, int ticks_modulo, int thick) {
+void draw_ticks(GContext *ctx, GPoint center, int radius, int num_ticks, int ticks_modulo, int thick) {
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_context_set_fill_color(ctx, GColorWhite);
   for (int i = 0; i < num_ticks; i += 1) {
@@ -115,7 +120,9 @@ static void update_date(struct tm *tick_time) {
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   layer_mark_dirty(s_wall_time_layer);
-  update_date(tick_time);
+  if (show_date) {
+    update_date(tick_time);
+  }
 }
 
 static void on_battery_state_change(BatteryChargeState charge) {
@@ -130,12 +137,65 @@ static void on_battery_state_change(BatteryChargeState charge) {
   text_layer_set_text(s_batt_text_layer, buffer);
 }
 
+static void message_handler(DictionaryIterator *received, void *context) {
+  bool refresh_window = 0;
+  Tuple *tuple_show_date         = dict_find(received, OPTION_SHOW_DATE);
+  Tuple *tuple_show_battery      = dict_find(received, OPTION_SHOW_BATTERY);
+  Tuple *tuple_use_bold_font     = dict_find(received, OPTION_USE_BOLD_FONT);
+
+  if (tuple_show_date) {
+    refresh_window = 1;
+    show_date = (bool)tuple_show_date->value->int32;
+  }
+  if (tuple_show_battery) {
+    refresh_window = 1;
+    show_battery = (bool)tuple_show_battery->value->int32;
+  }
+  if (tuple_use_bold_font) {
+    refresh_window = 1;
+    use_bold_font = (bool)tuple_use_bold_font->value->int32;
+  }
+
+  persist_write_bool(OPTION_SHOW_DATE,      show_date);
+  persist_write_bool(OPTION_SHOW_BATTERY,   show_battery);
+  persist_write_bool(OPTION_USE_BOLD_FONT,  use_bold_font);
+
+  if (refresh_window) {
+    main_window_destroy();
+    main_window_create();
+  }
+}
+
 static void main_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   static BatteryChargeState battery_state;
 
+  show_date = 0;
+  show_battery = 0;
+  use_bold_font = 0;
+
+  if (persist_exists(OPTION_SHOW_DATE)) {
+    show_date = persist_read_bool(OPTION_SHOW_DATE);
+  }
+  if (persist_exists(OPTION_SHOW_BATTERY)) {
+    show_battery = persist_read_bool(OPTION_SHOW_BATTERY);
+  }
+  if (persist_exists(OPTION_USE_BOLD_FONT)) {
+    use_bold_font = persist_read_bool(OPTION_USE_BOLD_FONT);
+  }
+
+  if (use_bold_font) {
+    app__log("mwl: use_bold_font ON");
+  } else {
+    app__log("mwl: use_bold_font OFF");
+  }
+  
   bounds = layer_get_bounds(window_layer);
-  bounds.origin.y += 21;
+  if (show_date || show_battery) {
+    bounds.origin.y += 21;
+  } else {
+    bounds.origin.y += 14;
+  }
   bounds.size.h   -= 28;
   center = grect_center_point(&bounds);
 
@@ -149,22 +209,32 @@ static void main_window_load(Window *window) {
   layer_set_update_proc(s_wall_time_layer, canvas_update_proc);
   layer_add_child(window_layer, s_wall_time_layer);
 
-  s_batt_text_layer = text_layer_create(GRect(72, 0, 72, 14));
-  s_date_text_layer = text_layer_create(GRect(0, 0, 72, 14));
+  s_date_text_layer = NULL;
+  s_batt_text_layer = NULL;
 
-  text_layer_set_background_color(s_batt_text_layer, GColorBlack);
-  text_layer_set_text_color(s_batt_text_layer, GColorWhite);
-  text_layer_set_background_color(s_date_text_layer, GColorBlack);
-  text_layer_set_text_color(s_date_text_layer, GColorWhite);
-  s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+  if (use_bold_font) {
+    s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+  } else {
+    s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+  }
 
-  text_layer_set_font(s_batt_text_layer, s_font);
-  text_layer_set_text_alignment(s_batt_text_layer, GTextAlignmentRight);
-  layer_add_child(window_layer, text_layer_get_layer(s_batt_text_layer));
-  
-  text_layer_set_font(s_date_text_layer, s_font);
-  text_layer_set_text_alignment(s_date_text_layer, GTextAlignmentLeft);
-  layer_add_child(window_layer, text_layer_get_layer(s_date_text_layer));
+  if (show_date) {
+    s_date_text_layer = text_layer_create(GRect(0, 0, 72, 14));
+    text_layer_set_background_color(s_date_text_layer, GColorBlack);
+    text_layer_set_text_color(s_date_text_layer, GColorWhite);
+    text_layer_set_font(s_date_text_layer, s_font);
+    text_layer_set_text_alignment(s_date_text_layer, GTextAlignmentLeft);
+    layer_add_child(window_layer, text_layer_get_layer(s_date_text_layer));
+  }
+
+  if (show_battery) {
+    s_batt_text_layer = text_layer_create(GRect(72, 0, 72, 14));
+    text_layer_set_background_color(s_batt_text_layer, GColorBlack);
+    text_layer_set_text_color(s_batt_text_layer, GColorWhite);
+    text_layer_set_font(s_batt_text_layer, s_font);
+    text_layer_set_text_alignment(s_batt_text_layer, GTextAlignmentRight);
+    layer_add_child(window_layer, text_layer_get_layer(s_batt_text_layer));
+  }
 
   bounds = layer_get_bounds(s_ticks_layer);
   center = grect_center_point(&bounds);
@@ -174,25 +244,12 @@ static void main_window_load(Window *window) {
   layer_mark_dirty(s_wall_time_layer);
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 
-  battery_state = battery_state_service_peek();
-  on_battery_state_change(battery_state);
-  battery_state_service_subscribe(on_battery_state_change);
-}
+  if (show_battery) {
+    battery_state = battery_state_service_peek();
+    on_battery_state_change(battery_state);
+    battery_state_service_subscribe(on_battery_state_change);
+  }
 
-static void main_window_unload(Window *window) {
-  // Destroy Layer
-  layer_destroy(s_wall_time_layer);
-}
-
-static void init(void) {
-  // Create main Window
-  s_main_window = window_create();
-  window_set_window_handlers(s_main_window, (WindowHandlers) {
-      .load = main_window_load,
-	.unload = main_window_unload,
-	});
-  window_stack_push(s_main_window, true);
-  
   s_minute_arrow = gpath_create(&MINUTE_HAND_POINTS);
   s_hour_arrow = gpath_create(&HOUR_HAND_POINTS);
   
@@ -200,9 +257,47 @@ static void init(void) {
   gpath_move_to(s_hour_arrow, center);
 }
 
-static void deinit(void) {
-  // Destroy main Window
+static void main_window_unload(Window *window) {
+  battery_state_service_unsubscribe();
+  tick_timer_service_unsubscribe();
+  minute_when_last_updated = -1;
+  
+  if (s_date_text_layer) {
+    text_layer_destroy(s_date_text_layer);
+    s_date_text_layer = NULL;
+  }
+  if (s_batt_text_layer) {
+    text_layer_destroy(s_batt_text_layer);
+    s_batt_text_layer = NULL;
+  }
+  layer_destroy(s_wall_time_layer);
+}
+
+static void main_window_create() {
+  s_main_window = window_create();
+  window_set_background_color(s_main_window, GColorBlack);
+  window_set_window_handlers(s_main_window, (WindowHandlers) {
+    .load   = main_window_load,
+    .unload = main_window_unload
+  });
+  window_stack_push(s_main_window, true);
+}
+
+static void main_window_destroy() {
+  window_stack_pop(true);
   window_destroy(s_main_window);
+}
+
+static void init(void) {
+  main_window_create();
+  app_message_open(app_message_inbox_size_maximum(),
+		   app_message_outbox_size_maximum());
+  app_message_register_inbox_received(message_handler);
+}
+
+static void deinit(void) {
+  app_message_deregister_callbacks();
+  main_window_destroy();
 }
 
 int main(void) {
