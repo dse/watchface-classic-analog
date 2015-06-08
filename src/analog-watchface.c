@@ -21,16 +21,15 @@ static int minute_when_last_updated;
 #define MINUTE_HAND_WIDTH 2
 #define HOUR_HAND_WIDTH   2
 
-#define TOP_ROW_FONT_SIZE 14
-#define SHOW_TOP_ROW 0
-
 #define OPTION_SHOW_DATE       0
 #define OPTION_SHOW_BATTERY    1
 #define OPTION_USE_BOLD_FONT   2
+#define OPTION_USE_LARGER_FONT 3
 
 static bool show_date;
 static bool show_battery;
 static bool use_bold_font;
+static bool use_larger_font;
 
 static const GPathInfo MINUTE_HAND_POINTS = {
   4,
@@ -142,6 +141,7 @@ static void message_handler(DictionaryIterator *received, void *context) {
   Tuple *tuple_show_date         = dict_find(received, OPTION_SHOW_DATE);
   Tuple *tuple_show_battery      = dict_find(received, OPTION_SHOW_BATTERY);
   Tuple *tuple_use_bold_font     = dict_find(received, OPTION_USE_BOLD_FONT);
+  Tuple *tuple_use_larger_font   = dict_find(received, OPTION_USE_LARGER_FONT);
 
   if (tuple_show_date) {
     refresh_window = 1;
@@ -155,10 +155,15 @@ static void message_handler(DictionaryIterator *received, void *context) {
     refresh_window = 1;
     use_bold_font = (bool)tuple_use_bold_font->value->int32;
   }
+  if (tuple_use_larger_font) {
+    refresh_window = 1;
+    use_larger_font = (bool)tuple_use_larger_font->value->int32;
+  }
 
-  persist_write_bool(OPTION_SHOW_DATE,      show_date);
-  persist_write_bool(OPTION_SHOW_BATTERY,   show_battery);
-  persist_write_bool(OPTION_USE_BOLD_FONT,  use_bold_font);
+  persist_write_bool(OPTION_SHOW_DATE,       show_date);
+  persist_write_bool(OPTION_SHOW_BATTERY,    show_battery);
+  persist_write_bool(OPTION_USE_BOLD_FONT,   use_bold_font);
+  persist_write_bool(OPTION_USE_LARGER_FONT, use_larger_font);
 
   if (refresh_window) {
     main_window_destroy();
@@ -173,6 +178,7 @@ static void main_window_load(Window *window) {
   show_date = 0;
   show_battery = 0;
   use_bold_font = 0;
+  use_larger_font = 0;
 
   if (persist_exists(OPTION_SHOW_DATE)) {
     show_date = persist_read_bool(OPTION_SHOW_DATE);
@@ -183,16 +189,17 @@ static void main_window_load(Window *window) {
   if (persist_exists(OPTION_USE_BOLD_FONT)) {
     use_bold_font = persist_read_bool(OPTION_USE_BOLD_FONT);
   }
-
-  if (use_bold_font) {
-    app__log("mwl: use_bold_font ON");
-  } else {
-    app__log("mwl: use_bold_font OFF");
+  if (persist_exists(OPTION_USE_LARGER_FONT)) {
+    use_larger_font = persist_read_bool(OPTION_USE_LARGER_FONT);
   }
-  
+
   bounds = layer_get_bounds(window_layer);
   if (show_date || show_battery) {
-    bounds.origin.y += 21;
+    if (use_larger_font) {
+      bounds.origin.y += 23;	/* for font size = 18 */
+    } else {
+      bounds.origin.y += 21;	/* for font size = 14 */
+    }
   } else {
     bounds.origin.y += 14;
   }
@@ -213,13 +220,21 @@ static void main_window_load(Window *window) {
   s_batt_text_layer = NULL;
 
   if (use_bold_font) {
-    s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+    if (use_larger_font) {
+      s_font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+    } else {
+      s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+    }
   } else {
-    s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+    if (use_larger_font) {
+      s_font = fonts_get_system_font(FONT_KEY_GOTHIC_18);
+    } else {
+      s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+    }
   }
 
   if (show_date) {
-    s_date_text_layer = text_layer_create(GRect(0, 0, 72, 14));
+    s_date_text_layer = text_layer_create(GRect(0, 0, 90, use_larger_font ? 18 : 14));
     text_layer_set_background_color(s_date_text_layer, GColorBlack);
     text_layer_set_text_color(s_date_text_layer, GColorWhite);
     text_layer_set_font(s_date_text_layer, s_font);
@@ -228,7 +243,7 @@ static void main_window_load(Window *window) {
   }
 
   if (show_battery) {
-    s_batt_text_layer = text_layer_create(GRect(72, 0, 72, 14));
+    s_batt_text_layer = text_layer_create(GRect(90, 0, 54, use_larger_font ? 18 : 14));
     text_layer_set_background_color(s_batt_text_layer, GColorBlack);
     text_layer_set_text_color(s_batt_text_layer, GColorWhite);
     text_layer_set_font(s_batt_text_layer, s_font);

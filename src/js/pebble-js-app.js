@@ -6,12 +6,11 @@
 
 (function() {
 	function showConfiguration() {
-		console.log("showConfiguration");
 		var url = "http://webonastick.com/watchfaces/dress-watch/config/";
-		url += "?showDate="    + encodeURIComponent(localStorage.getItem("showDate"));
-		url += "&showBattery=" + encodeURIComponent(localStorage.getItem("showBattery"));
-		url += "&useBoldFont=" + encodeURIComponent(localStorage.getItem("useBoldFont"));
-		console.log(url);
+		url += "?showDate="      + encodeURIComponent(localStorage.getItem("showDate"));
+		url += "&showBattery="   + encodeURIComponent(localStorage.getItem("showBattery"));
+		url += "&useBoldFont="   + encodeURIComponent(localStorage.getItem("useBoldFont"));
+		url += "&useLargerFont=" + encodeURIComponent(localStorage.getItem("useLargerFont"));
 		Pebble.openURL(url);
 	}
 	function setConfigFrom(o) {
@@ -19,16 +18,14 @@
 		message[0] = o.showDate;
 		message[1] = o.showBattery;
 		message[2] = o.useBoldFont;
-		localStorage.setItem("showDate",    o.showDate);
-		localStorage.setItem("showBattery", o.showBattery);
-		localStorage.setItem("useBoldFont", o.useBoldFont);
-		console.log("showDate: " + o.showDate);
-		console.log("showBattery: " + o.showBattery);
-		console.log("useBoldFont: " + o.useBoldFont);
+		message[3] = o.useLargerFont;
+		localStorage.setItem("showDate",      o.showDate);
+		localStorage.setItem("showBattery",   o.showBattery);
+		localStorage.setItem("useBoldFont",   o.useBoldFont);
+		localStorage.setItem("useLargerFont", o.useLargerFont);
 		Pebble.sendAppMessage(message);
 	}
 	function configurationClosed(e) {
-		console.log("configurationClosed " + JSON.stringify(e));
 		if (e.response && e.response !== "CANCELLED") {
 			try {
 				var settings = JSON.parse(decodeURIComponent(e.response));
@@ -41,14 +38,12 @@
 		}
 	}
 	function appmessage(data) {
-		console.log("appmessage " + JSON.stringify(data));
 		try {
 			setConfigFrom(data);
 		} catch (ignore) {
 		}
 	}
 	function webviewclosed(e) {
-		console.log("webviewclosed " + JSON.stringify(e));
 		if (e.response && e.response !== 'CANCELLED') {
 			try {
 				var settings = JSON.parse(decodeURIComponent(e.response));
@@ -60,9 +55,6 @@
 			}
 		}
 	}
-	Pebble.addEventListener("ready", function(e) {
-		console.log("ready and running!");
-	});
 	Pebble.addEventListener("appmessage", appmessage);
 	Pebble.addEventListener("showConfiguration", showConfiguration);
 	Pebble.addEventListener("configurationClosed", configurationClosed);
