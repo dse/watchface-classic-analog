@@ -290,11 +290,12 @@ static void main_window_unload(Window *window) {
 
 static void main_window_create() {
     s_main_window = window_create();
+    WindowHandlers wh = {
+	.load   = main_window_load,
+        .unload = main_window_unload
+    };
     window_set_background_color(s_main_window, GColorBlack);
-    window_set_window_handlers(s_main_window, (WindowHandlers) {
-            .load   = main_window_load,
-                .unload = main_window_unload
-                });
+    window_set_window_handlers(s_main_window, wh);
     window_stack_push(s_main_window, true);
 }
 
