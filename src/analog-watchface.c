@@ -18,8 +18,6 @@ static int minute_when_last_updated;
 #define SECOND_RADIUS     64
 #define MINUTE_RADIUS     56
 #define HOUR_RADIUS       36
-#define MINUTE_HAND_WIDTH 2
-#define HOUR_HAND_WIDTH   2
 
 #define OPTION_SHOW_DATE       0
 #define OPTION_SHOW_BATTERY    1
@@ -31,36 +29,18 @@ static bool show_battery;
 static bool use_bold_font;
 static bool use_larger_font;
 
-static const GPathInfo MINUTE_HAND_POINTS = {
-    4,
-    (GPoint []) {
-        { -MINUTE_HAND_WIDTH, -MINUTE_RADIUS },
-        { -MINUTE_HAND_WIDTH, MINUTE_HAND_WIDTH },
-        { MINUTE_HAND_WIDTH, MINUTE_HAND_WIDTH },
-        { MINUTE_HAND_WIDTH, -MINUTE_RADIUS }
-    }
-};
-
-static const GPathInfo HOUR_HAND_POINTS = {
-    4,
-    (GPoint []){
-        { -HOUR_HAND_WIDTH, -HOUR_RADIUS },
-        { -HOUR_HAND_WIDTH, HOUR_HAND_WIDTH },
-        { HOUR_HAND_WIDTH, HOUR_HAND_WIDTH },
-        { HOUR_HAND_WIDTH, -HOUR_RADIUS }
-    }
-};
-
-static GPath *s_minute_arrow, *s_hour_arrow;
-
 static GRect bounds;
 static GPoint center;
 
-GPoint tick_point(GPoint center, int radius, int degrees) {
-    int angle = (int)(TRIG_MAX_ANGLE * degrees / 360.0 + 0.5);
+GPoint tick_angle_point(GPoint center, int radius, int angle) {
     int x = center.x + (int)(radius * 1.0 * sin_lookup(angle) / TRIG_MAX_RATIO + 0.5);
     int y = center.y - (int)(radius * 1.0 * cos_lookup(angle) / TRIG_MAX_RATIO + 0.5);
     return GPoint(x, y);
+}
+
+GPoint tick_point(GPoint center, int radius, int degrees) {
+    int angle = (int)(TRIG_MAX_ANGLE * degrees / 360.0 + 0.5);
+    return tick_angle_point(center, radius, angle);
 }
 
 void draw_ticks(GContext *ctx, GPoint center, int radius, int num_ticks, int ticks_modulo, int thick) {
@@ -90,22 +70,23 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
 
-    graphics_context_set_stroke_color(ctx, GColorWhite);
-    graphics_context_set_fill_color(ctx, GColorWhite);
-  
-    GPoint second = tick_point(center, SECOND_RADIUS, t->tm_sec * 6);
-    graphics_draw_line(ctx, center, second);
-
+    int second_angle = (int)(TRIG_MAX_ANGLE / 60      *                                            t->tm_sec  + 0.5);
     int minute_angle = (int)(TRIG_MAX_ANGLE / 3600.0  * (                         t->tm_min * 60 + t->tm_sec) + 0.5);
     int hour_angle   = (int)(TRIG_MAX_ANGLE / 43200.0 * (t->tm_hour % 12 * 3600 + t->tm_min * 60 + t->tm_sec) + 0.5);
 
-    gpath_rotate_to(s_minute_arrow, minute_angle);
-    gpath_draw_filled(ctx, s_minute_arrow);
-    gpath_draw_outline(ctx, s_minute_arrow);
+    GPoint second = tick_angle_point(center, SECOND_RADIUS, second_angle);
+    GPoint minute = tick_angle_point(center, MINUTE_RADIUS, minute_angle);
+    GPoint hour   = tick_angle_point(center, HOUR_RADIUS,   hour_angle);
 
-    gpath_rotate_to(s_hour_arrow, hour_angle);
-    gpath_draw_filled(ctx, s_hour_arrow);
-    gpath_draw_outline(ctx, s_hour_arrow);
+    graphics_context_set_stroke_color(ctx, GColorWhite);
+    graphics_context_set_fill_color(ctx, GColorWhite);
+  
+    graphics_context_set_stroke_width(ctx, 1);
+    graphics_draw_line(ctx, center, second);
+
+    graphics_context_set_stroke_width(ctx, 3);
+    graphics_draw_line(ctx, center, minute);
+    graphics_draw_line(ctx, center, hour);
 }
 
 static void update_date(struct tm *tick_time) {
@@ -264,12 +245,6 @@ static void main_window_load(Window *window) {
         on_battery_state_change(battery_state);
         battery_state_service_subscribe(on_battery_state_change);
     }
-
-    s_minute_arrow = gpath_create(&MINUTE_HAND_POINTS);
-    s_hour_arrow = gpath_create(&HOUR_HAND_POINTS);
-  
-    gpath_move_to(s_minute_arrow, center);
-    gpath_move_to(s_hour_arrow, center);
 }
 
 static void main_window_unload(Window *window) {
