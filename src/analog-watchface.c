@@ -1,8 +1,6 @@
 #include <pebble.h>
 #include "analog-watchface.h"
 
-#define app__log(a) app_log(APP_LOG_LEVEL_INFO, __FILE__, __LINE__, a);
-
 static Window *s_main_window;
 static Layer *s_ticks_layer;
 static Layer *s_wall_time_layer;
@@ -18,11 +16,6 @@ static int minute_when_last_updated;
 #define SECOND_RADIUS     64
 #define MINUTE_RADIUS     56
 #define HOUR_RADIUS       36
-
-static bool show_date;
-static bool show_battery;
-static bool use_bold_font;
-static bool use_larger_font;
 
 static GRect bounds;
 static GPoint center;
@@ -61,6 +54,7 @@ void draw_ticks(GContext *ctx, GPoint center, int radius, int num_ticks, int tic
             } else {
                 GPoint p1 = tick_point(center, radius + 1, i * 360 / num_ticks);
                 GPoint p2 = tick_point(center, radius - 1, i * 360 / num_ticks);
+                graphics_context_set_stroke_width(ctx, 1);
                 graphics_draw_line(ctx, p1, p2);
             }
         } else {
