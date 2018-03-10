@@ -1,7 +1,6 @@
 {
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "Darren Embry",
-  "private": true,
   "dependencies": {
     "pebble-clay": "^1.0.4"
   },
@@ -15,14 +14,15 @@
     },
     "projectType": "native",
     "uuid": "d02327f6-d77b-461f-818a-91813da22a52",
-    "messageKeys": {
-      "dummy": 0
-    },
-    "enableMultiJS": false,
+    "messageKeys": [
+      "ShowDate",
+      "ShowBattery",
+      "UseBoldFont",
+      "UseLargerFont"
+    ],
+    "enableMultiJS": true,
     "displayName": "Dress Watch",
     "watchapp": {
-      "onlyShownOnCommunication": false,
-      "hiddenApp": false,
       "watchface": true
     },
     "targetPlatforms": [

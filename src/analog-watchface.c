@@ -19,11 +19,6 @@ static int minute_when_last_updated;
 #define MINUTE_RADIUS     56
 #define HOUR_RADIUS       36
 
-#define OPTION_SHOW_DATE       0
-#define OPTION_SHOW_BATTERY    1
-#define OPTION_USE_BOLD_FONT   2
-#define OPTION_USE_LARGER_FONT 3
-
 static bool show_date;
 static bool show_battery;
 static bool use_bold_font;
@@ -31,6 +26,18 @@ static bool use_larger_font;
 
 static GRect bounds;
 static GPoint center;
+
+/* Persistent storage key */
+#define SETTINGS_KEY 1
+
+typedef struct DressWatchSettings {
+    bool show_date;
+    bool show_battery;
+    bool use_bold_font;
+    bool use_larger_font;
+} DressWatchSettings;
+
+static DressWatchSettings settings;
 
 GPoint tick_angle_point(GPoint center, int radius, int angle) {
     int x = center.x + (int)(radius * 1.0 * sin_lookup(angle) / TRIG_MAX_RATIO + 0.5);
@@ -100,7 +107,7 @@ static void update_date(struct tm *tick_time) {
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     layer_mark_dirty(s_wall_time_layer);
-    if (show_date) {
+    if (settings.show_date) {
         update_date(tick_time);
     }
 }
@@ -119,32 +126,29 @@ static void on_battery_state_change(BatteryChargeState charge) {
 
 static void message_handler(DictionaryIterator *received, void *context) {
     bool refresh_window = 0;
-    Tuple *tuple_show_date         = dict_find(received, OPTION_SHOW_DATE);
-    Tuple *tuple_show_battery      = dict_find(received, OPTION_SHOW_BATTERY);
-    Tuple *tuple_use_bold_font     = dict_find(received, OPTION_USE_BOLD_FONT);
-    Tuple *tuple_use_larger_font   = dict_find(received, OPTION_USE_LARGER_FONT);
+    Tuple *tuple_show_date         = dict_find(received, MESSAGE_KEY_ShowDate);
+    Tuple *tuple_show_battery      = dict_find(received, MESSAGE_KEY_ShowBattery);
+    Tuple *tuple_use_bold_font     = dict_find(received, MESSAGE_KEY_UseBoldFont);
+    Tuple *tuple_use_larger_font   = dict_find(received, MESSAGE_KEY_UseLargerFont);
 
     if (tuple_show_date) {
         refresh_window = 1;
-        show_date = (bool)tuple_show_date->value->int32;
+        settings.show_date = (bool)tuple_show_date->value->int32;
     }
     if (tuple_show_battery) {
         refresh_window = 1;
-        show_battery = (bool)tuple_show_battery->value->int32;
+        settings.show_battery = (bool)tuple_show_battery->value->int32;
     }
     if (tuple_use_bold_font) {
         refresh_window = 1;
-        use_bold_font = (bool)tuple_use_bold_font->value->int32;
+        settings.use_bold_font = (bool)tuple_use_bold_font->value->int32;
     }
     if (tuple_use_larger_font) {
         refresh_window = 1;
-        use_larger_font = (bool)tuple_use_larger_font->value->int32;
+        settings.use_larger_font = (bool)tuple_use_larger_font->value->int32;
     }
 
-    persist_write_bool(OPTION_SHOW_DATE,       show_date);
-    persist_write_bool(OPTION_SHOW_BATTERY,    show_battery);
-    persist_write_bool(OPTION_USE_BOLD_FONT,   use_bold_font);
-    persist_write_bool(OPTION_USE_LARGER_FONT, use_larger_font);
+    persist_write_data(SETTINGS_KEY, &settings, sizeof(settings));
 
     if (refresh_window) {
         main_window_destroy();
@@ -156,27 +160,17 @@ static void main_window_load(Window *window) {
     Layer *window_layer = window_get_root_layer(window);
     static BatteryChargeState battery_state;
 
-    show_date = 0;
-    show_battery = 0;
-    use_bold_font = 0;
-    use_larger_font = 0;
+    /* defaults */
+    settings.show_date = 0;
+    settings.show_battery = 0;
+    settings.use_bold_font = 0;
+    settings.use_larger_font = 0;
 
-    if (persist_exists(OPTION_SHOW_DATE)) {
-        show_date = persist_read_bool(OPTION_SHOW_DATE);
-    }
-    if (persist_exists(OPTION_SHOW_BATTERY)) {
-        show_battery = persist_read_bool(OPTION_SHOW_BATTERY);
-    }
-    if (persist_exists(OPTION_USE_BOLD_FONT)) {
-        use_bold_font = persist_read_bool(OPTION_USE_BOLD_FONT);
-    }
-    if (persist_exists(OPTION_USE_LARGER_FONT)) {
-        use_larger_font = persist_read_bool(OPTION_USE_LARGER_FONT);
-    }
+    persist_read_data(SETTINGS_KEY, &settings, sizeof(settings));
 
     bounds = layer_get_bounds(window_layer);
-    if (show_date || show_battery) {
-        if (use_larger_font) {
+    if (settings.show_date || settings.show_battery) {
+        if (settings.use_larger_font) {
             bounds.origin.y += 23; /* for font size = 18 */
         } else {
             bounds.origin.y += 21; /* for font size = 14 */
@@ -200,22 +194,22 @@ static void main_window_load(Window *window) {
     s_date_text_layer = NULL;
     s_batt_text_layer = NULL;
 
-    if (use_bold_font) {
-        if (use_larger_font) {
+    if (settings.use_bold_font) {
+        if (settings.use_larger_font) {
             s_font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
         } else {
             s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
         }
     } else {
-        if (use_larger_font) {
+        if (settings.use_larger_font) {
             s_font = fonts_get_system_font(FONT_KEY_GOTHIC_18);
         } else {
             s_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
         }
     }
 
-    if (show_date) {
-        s_date_text_layer = text_layer_create(GRect(0, 0, 90, use_larger_font ? 18 : 14));
+    if (settings.show_date) {
+        s_date_text_layer = text_layer_create(GRect(0, 0, 90, settings.use_larger_font ? 18 : 14));
         text_layer_set_background_color(s_date_text_layer, GColorBlack);
         text_layer_set_text_color(s_date_text_layer, GColorWhite);
         text_layer_set_font(s_date_text_layer, s_font);
@@ -223,8 +217,8 @@ static void main_window_load(Window *window) {
         layer_add_child(window_layer, text_layer_get_layer(s_date_text_layer));
     }
 
-    if (show_battery) {
-        s_batt_text_layer = text_layer_create(GRect(90, 0, 54, use_larger_font ? 18 : 14));
+    if (settings.show_battery) {
+        s_batt_text_layer = text_layer_create(GRect(90, 0, 54, settings.use_larger_font ? 18 : 14));
         text_layer_set_background_color(s_batt_text_layer, GColorBlack);
         text_layer_set_text_color(s_batt_text_layer, GColorWhite);
         text_layer_set_font(s_batt_text_layer, s_font);
@@ -240,7 +234,7 @@ static void main_window_load(Window *window) {
     layer_mark_dirty(s_wall_time_layer);
     tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 
-    if (show_battery) {
+    if (settings.show_battery) {
         battery_state = battery_state_service_peek();
         on_battery_state_change(battery_state);
         battery_state_service_subscribe(on_battery_state_change);
