@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0",
+  "version": "3.0.0",
   "author": "Darren Embry",
   "dependencies": {
     "pebble-clay": "^1.0.4"
