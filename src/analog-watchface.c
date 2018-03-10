@@ -17,8 +17,9 @@ static int minute_when_last_updated;
 #define MINUTE_RADIUS     56
 #define HOUR_RADIUS       36
 
-static GRect bounds;
-static GPoint center;
+static GRect bounds;            /* relative to window */
+static GRect inner_bounds;      /* relative to inner layers */
+static GPoint center;           /* relative to inner layers */
 
 /* Persistent storage key */
 #define SETTINGS_KEY 1
@@ -75,9 +76,11 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     int minute_angle = (int)(TRIG_MAX_ANGLE / 3600.0  * (                         t->tm_min * 60 + t->tm_sec) + 0.5);
     int hour_angle   = (int)(TRIG_MAX_ANGLE / 43200.0 * (t->tm_hour % 12 * 3600 + t->tm_min * 60 + t->tm_sec) + 0.5);
 
-    GPoint second = tick_angle_point(center, SECOND_RADIUS, second_angle);
-    GPoint minute = tick_angle_point(center, MINUTE_RADIUS, minute_angle);
-    GPoint hour   = tick_angle_point(center, HOUR_RADIUS,   hour_angle);
+    GPoint second, minute, hour;
+
+    second = tick_angle_point(center, SECOND_RADIUS, second_angle);
+    minute = tick_angle_point(center, MINUTE_RADIUS, minute_angle);
+    hour   = tick_angle_point(center, HOUR_RADIUS,   hour_angle);
 
     graphics_context_set_stroke_color(ctx, GColorWhite);
     graphics_context_set_fill_color(ctx, GColorWhite);
@@ -173,13 +176,16 @@ static void main_window_load(Window *window) {
         bounds.origin.y += 14;
     }
     bounds.size.h   -= 28;
-    center = grect_center_point(&bounds);
 
     window_set_background_color(window, GColorBlack);
 
     s_ticks_layer = layer_create(bounds);
     layer_set_update_proc(s_ticks_layer, ticks_update_proc);
     layer_add_child(window_layer, s_ticks_layer);
+
+    inner_bounds = layer_get_bounds(s_ticks_layer);
+
+    center = grect_center_point(&inner_bounds);
 
     s_wall_time_layer = layer_create(bounds);
     layer_set_update_proc(s_wall_time_layer, canvas_update_proc);
@@ -219,9 +225,6 @@ static void main_window_load(Window *window) {
         text_layer_set_text_alignment(s_batt_text_layer, GTextAlignmentRight);
         layer_add_child(window_layer, text_layer_get_layer(s_batt_text_layer));
     }
-
-    bounds = layer_get_bounds(s_ticks_layer);
-    center = grect_center_point(&bounds);
 
     minute_when_last_updated = -1;
 
