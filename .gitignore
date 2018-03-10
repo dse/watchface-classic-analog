@@ -6,3 +6,6 @@ build
 wscript.backup
 
 node_modules/
+
+# Commit the .pbw.
+!build/watchface-dress-watch.pbw
