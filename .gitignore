@@ -1,11 +1,10 @@
+# Exclude built but commit the .pbw.
+build/*
+!build/*.pbw
 
 # Ignore build generated files
-build
 .lock-waf_darwin_build
 *~
 wscript.backup
 
 node_modules/
-
-# Commit the .pbw.
-!build/watchface-dress-watch.pbw
