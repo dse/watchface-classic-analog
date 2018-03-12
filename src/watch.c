@@ -1,5 +1,5 @@
 #include <pebble.h>
-#include "analog-watchface.h"
+#include "watch.h"
 
 static Window *s_main_window;
 static Layer *s_ticks_layer;

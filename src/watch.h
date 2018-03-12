@@ -1,5 +1,5 @@
-#ifndef ANALOG_WATCHFACE_H
-#define ANALOG_WATCHFACE_H
+#ifndef WATCH_H
+#define WATCH_H
 
 static void main_window_create();
 static void main_window_destroy();
