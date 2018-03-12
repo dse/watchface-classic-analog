@@ -22,16 +22,6 @@ static GRect  watch_bounds;
 static GRect  inner_bounds;     /* relative to inner layers */
 static GPoint center;           /* relative to inner layers */
 
-/* Persistent storage key */
-#define SETTINGS_KEY 1
-
-typedef struct WatchSettings {
-    bool show_date;
-    bool show_battery;
-    bool use_bold_font;
-    bool use_larger_font;
-} WatchSettings;
-
 static WatchSettings settings;
 
 GPoint tick_angle_point(GPoint center, int radius, int angle) {
