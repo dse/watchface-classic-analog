@@ -12,10 +12,10 @@ static GFont s_font;
 
 static int minute_when_last_updated;
 
-#define TICK_RADIUS       70
-#define SECOND_RADIUS     67
-#define MINUTE_RADIUS     56
-#define HOUR_RADIUS       36
+static int tick_radius;
+static int second_hand_length;
+static int minute_hand_length;
+static int hour_hand_length;
 
 static GRect  window_bounds;
 static GRect  watch_bounds;
@@ -35,8 +35,8 @@ typedef struct WatchSettings {
 static WatchSettings settings;
 
 GPoint tick_angle_point(GPoint center, int radius, int angle) {
-    int x = center.x + (int)(radius * 1.0 * sin_lookup(angle) / TRIG_MAX_RATIO + 0.5);
-    int y = center.y - (int)(radius * 1.0 * cos_lookup(angle) / TRIG_MAX_RATIO + 0.5);
+    int x = center.x + ROUND(radius * 1.0 * sin_lookup(angle) / TRIG_MAX_RATIO);
+    int y = center.y - ROUND(radius * 1.0 * cos_lookup(angle) / TRIG_MAX_RATIO);
     return GPoint(x, y);
 }
 
@@ -66,22 +66,22 @@ void draw_ticks(GContext *ctx, GPoint center, int radius, int num_ticks, int tic
 }
 
 static void ticks_update_proc(Layer *layer, GContext *ctx) {
-    draw_ticks(ctx, center, TICK_RADIUS, 60, 5, 1);
+    draw_ticks(ctx, center, tick_radius, 60, 5, 1);
 }
 
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
 
-    int second_angle = (int)(TRIG_MAX_ANGLE / 60      *                                            t->tm_sec  + 0.5);
-    int minute_angle = (int)(TRIG_MAX_ANGLE / 3600.0  * (                         t->tm_min * 60 + t->tm_sec) + 0.5);
-    int hour_angle   = (int)(TRIG_MAX_ANGLE / 43200.0 * (t->tm_hour % 12 * 3600 + t->tm_min * 60 + t->tm_sec) + 0.5);
+    int second_angle = ROUND(TRIG_MAX_ANGLE / 60.0    *                                            t->tm_sec);
+    int minute_angle = ROUND(TRIG_MAX_ANGLE / 3600.0  * (                         t->tm_min * 60 + t->tm_sec));
+    int hour_angle   = ROUND(TRIG_MAX_ANGLE / 43200.0 * (t->tm_hour % 12 * 3600 + t->tm_min * 60 + t->tm_sec));
 
     GPoint second, minute, hour;
 
-    second = tick_angle_point(center, SECOND_RADIUS, second_angle);
-    minute = tick_angle_point(center, MINUTE_RADIUS, minute_angle);
-    hour   = tick_angle_point(center, HOUR_RADIUS,   hour_angle);
+    second = tick_angle_point(center, second_hand_length, second_angle);
+    minute = tick_angle_point(center, minute_hand_length, minute_angle);
+    hour   = tick_angle_point(center, hour_hand_length,   hour_angle);
 
     graphics_context_set_stroke_color(ctx, GColorWhite);
     graphics_context_set_fill_color(ctx, GColorWhite);
@@ -169,16 +169,20 @@ static void main_window_load(Window *window) {
     window_bounds = layer_get_bounds(window_layer);
 
     watch_bounds = window_bounds;
-    watch_bounds.size.h = TICK_RADIUS * 2 + 3;
-    watch_bounds.origin.y = window_bounds.size.h / 2 - (watch_bounds.size.h + 1) / 2;
-
     if (settings.show_date || settings.show_battery) {
         if (settings.use_larger_font) {
-            watch_bounds.origin.y += 18 / 2;
+            watch_bounds.origin.y += 18;
+            watch_bounds.size.h   -= 18;
         } else {
-            watch_bounds.origin.y += 14 / 2;
+            watch_bounds.origin.y += 14;
+            watch_bounds.size.h   -= 14;
         }
     }
+
+    tick_radius = MIN(watch_bounds.size.h, watch_bounds.size.w) / 2 - 2;
+    second_hand_length = tick_radius - 3;
+    minute_hand_length = ROUND(tick_radius * 0.8);
+    hour_hand_length   = ROUND(tick_radius * 0.5);
 
     window_set_background_color(window, GColorBlack);
 
