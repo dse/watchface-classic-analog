@@ -13,7 +13,7 @@ static GFont s_font;
 static int minute_when_last_updated;
 
 #define TICK_RADIUS       70
-#define SECOND_RADIUS     68
+#define SECOND_RADIUS     67
 #define MINUTE_RADIUS     56
 #define HOUR_RADIUS       36
 
